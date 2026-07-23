@@ -1,8 +1,12 @@
 #!/bin/bash
 
+if [ ! -f /.dockerenv ]; then
+  echo "FATAL: Must be run from docker"
+  exit 1
+fi
+
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd -P)"
-ROOT_DIR=$(dirname $CURRENT_DIR)
-K1_DIR=$ROOT_DIR/k1
+PARENT_DIR=$(dirname $CURRENT_DIR)
 
 commands="7z unsquashfs mksquashfs mkpasswd"
 for command in $commands; do
@@ -13,18 +17,47 @@ for command in $commands; do
     fi
 done
 
-BOARD_SHORT_NAME=CR4CU220812S11
-DOWNLOAD_PAGE=download-k1-flagship
-CREALITY_VERSION=1.3.3.46
+# CR4CU220812S11_ota_img_V6.1.3.3.8.img
+# NEBULA_ota_img_V1.1.0.29.img
+# Ender-3_V3_KE_F005_ota_img_V1.1.0.15.img
+# F001_ota_img_V1.2.3.28.img
+# F004_ota_img_V1.2.0.20.img
+
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename $0) <downloaded image>"
+  exit 1
+fi
+
+old_image_name=/originals/$(basename $1)
+
+# all except for KE have a consistent naming scheme
+filename=$(basename $old_image_name | sed 's/Ender-3_V3_KE//g')
+if [[ $filename =~ ^([^_]+)_ota_img_V([^.]+(\.[^.]+)*)\.img$ ]]; then
+  BOARD_SHORT_NAME=${BASH_REMATCH[1]}
+  CREALITY_VERSION=${BASH_REMATCH[2]}
+else
+  echo "Invalid image filename: $filename" >&2
+  exit 1
+fi
+
+if [ ! -f $old_image_name ]; then
+  echo "Error: File $1 is not valid"
+  exit 1
+fi
 
 # thanks to Neon for showing me how to derive the password
 FIRMWARE_PASSWORD=$(mkpasswd -m md5 "${BOARD_SHORT_NAME}C3_7e_bz" -S cxswfile)
 
 version="7.${CREALITY_VERSION}"
+old_directory="${BOARD_SHORT_NAME}_ota_img_V${CREALITY_VERSION}"
+old_sub_directory="ota_v${CREALITY_VERSION}"
+directory="${BOARD_SHORT_NAME}_ota_img_V${version}"
+sub_directory="ota_v${version}"
+image_name="${BOARD_SHORT_NAME}_ota_img_V${version}".img
 
 function write_ota_info() {
     echo "ota_version=${version}" > /tmp/${version}-pellcorp/ota_info
-    echo "ota_board_name=${board_name}" >> /tmp/${version}-pellcorp/ota_info
+    echo "ota_board_name=${BOARD_SHORT_NAME}" >> /tmp/${version}-pellcorp/ota_info
     echo "ota_compile_time=$(date '+%Y %m.%d %H:%M:%S')" >> /tmp/${version}-pellcorp/ota_info
     echo "ota_site=http://192.168.43.52/ota/board_test" >> /tmp/${version}-pellcorp/ota_info
     sudo cp /tmp/${version}-pellcorp/ota_info /tmp/${version}-pellcorp/squashfs-root/etc/
@@ -33,44 +66,27 @@ function write_ota_info() {
 function customise_rootfs() {
     write_ota_info
     [ -d $CURRENT_DIR/opt ] && rm -rf $CURRENT_DIR/opt
-    sudo cp $CURRENT_DIR/etc/init.d/* /tmp/${version}-pellcorp/squashfs-root/etc/init.d/
-    sudo cp $K1_DIR/services/S58factoryreset /tmp/${version}-pellcorp/squashfs-root/etc/init.d/
-    sudo cp $K1_DIR/services/S58wpa_supplicant /tmp/${version}-pellcorp/squashfs-root/etc/init.d/
+    sudo cp $PARENT_DIR/etc/init.d/* /tmp/${version}-pellcorp/squashfs-root/etc/init.d/
+
+    sudo sed -i "/^root/c\\$(printf '%s\n' "$root_hash")"  /tmp/${version}-pellcorp/squashfs-root/etc/shadow
 }
 
 function update_rootfs() {
     pushd /tmp/${version}-pellcorp/ > /dev/null
-    sudo unsquashfs orig_rootfs.squashfs 
+    sudo unsquashfs orig_rootfs.squashfs
     customise_rootfs
     sudo mksquashfs squashfs-root rootfs.squashfs || exit $?
     sudo rm -rf squashfs-root
-    sudo chown $USER rootfs.squashfs 
+    sudo chown developer: rootfs.squashfs
 }
-
-download=$(wget -q https://www.creality.com/pages/${DOWNLOAD_PAGE} -O- | grep -o "\"\([^\"]*\)V${CREALITY_VERSION}.img" | tail -1 | tr -d '"')
-if [ -z "$download" ]; then
-  echo "FATAL: Download page has changed could not download V${CREALITY_VERSION}"
-  exit 1
-fi
-
-old_image_name=$(basename $download)
-board_name=$(echo "$old_image_name" | grep -o "\(CR.*\)ota" | sed 's/_ota//g')
-old_directory="${board_name}_ota_img_V${CREALITY_VERSION}"
-old_sub_directory="ota_v${CREALITY_VERSION}"
-directory="${board_name}_ota_img_V${version}"
-sub_directory="ota_v${version}"
-image_name="${board_name}_ota_img_V${version}".img
-
-if [ ! -f /tmp/$old_image_name ]; then
-    echo "Downloading $download -> /tmp/$old_image_name ..."
-    wget "$download" -O /tmp/$old_image_name
-fi
 
 if [ -d /tmp/$old_directory ]; then
     rm -rf /tmp/$old_directory
 fi
 
-7z x /tmp/$old_image_name -p"$FIRMWARE_PASSWORD" -o/tmp
+7z x $old_image_name -p"$FIRMWARE_PASSWORD" -o/tmp
+
+[ -f  /out/${image_name} ] && rm  /out/${image_name}
 
 if [ -d /tmp/${version}-pellcorp ]; then
     sudo rm -rf /tmp/${version}-pellcorp
@@ -119,7 +135,8 @@ sed -i "s/img_size=$orig_rootfs_size/img_size=$rootfs_size/g" /tmp/${version}-pe
 
 pushd /tmp/${version}-pellcorp/ > /dev/null
 7z a ${image_name}.7z -p"$FIRMWARE_PASSWORD" $directory
-mv ${image_name}.7z ${image_name}
+mv ${image_name}.7z /out/${image_name}
 popd > /dev/null
 
-echo "The image is $directory/${image_name}"
+# assuming we call this docker with /tmp:/out
+echo "The image is /tmp/${image_name}"
