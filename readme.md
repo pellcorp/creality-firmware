@@ -42,11 +42,10 @@ a new firmware image from the cli rather than relying on the display server
 
 ### What is the Root Password?
 
-For NEBULA its `creality`
-For Ender 3 V3 KE its `Creality2023`
-For K1 variants its `creality_2023`
-
-For others its whatever the default is
+- For NEBULA it's `creality`
+- For Ender 3 V3 KE it's `Creality2023`
+- For K1 variants it's `creality_2023`
+- For others it's whatever the default is!
 
 ## Decrypting
 
