@@ -40,6 +40,14 @@ a new firmware image from the cli rather than relying on the display server
 /etc/ota_bin/local_ota_update.sh /tmp/udisk/sda1/CR4CU220812S11_ota_img_V6.1.3.3.8.img
 ```
 
+### What is the Root Password?
+
+For NEBULA its `creality`
+For Ender 3 V3 KE its `Creality2023`
+For K1 variants its `creality_2023`
+
+For others its whatever the default is
+
 ## Decrypting
 
 Want access to the rootfs without having to stuff around, I added a decrypt action to extract the firmware and produce a .rootfs.squashfs that you

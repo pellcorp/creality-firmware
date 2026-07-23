@@ -68,7 +68,10 @@ function customise_rootfs() {
     [ -d $CURRENT_DIR/opt ] && rm -rf $CURRENT_DIR/opt
     sudo cp $PARENT_DIR/etc/init.d/* /tmp/${version}-pellcorp/squashfs-root/etc/init.d/
 
-    sudo sed -i "/^root/c\\$(printf '%s\n' "$root_hash")"  /tmp/${version}-pellcorp/squashfs-root/etc/shadow
+    # I am not sure if for other boards setting a password will cause a boot loop, so im just doing it for nebula for now
+    if [ "$BOARD_SHORT_NAME" = "NEBULA" ]; then
+      sudo sed -i "/^root/c\\$(printf '%s\n' "$root_hash")"  /tmp/${version}-pellcorp/squashfs-root/etc/shadow
+    fi
 }
 
 function update_rootfs() {
