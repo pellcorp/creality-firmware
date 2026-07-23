@@ -30,13 +30,14 @@ fi
 
 old_image_name=/originals/$(basename $1)
 
-# all except for KE have a consistent naming scheme
-filename=$(basename $old_image_name | sed 's/Ender-3_V3_KE//g')
-if [[ $filename =~ ^([^_]+)_ota_img_V([^.]+(\.[^.]+)*)\.img$ ]]; then
-  BOARD_SHORT_NAME=${BASH_REMATCH[1]}
+# Board names may themselves contain underscores (for example, Ender-3_V3_KE_F005).
+filename=$(basename $old_image_name)
+if [[ $filename =~ ^(.+)_ota_img_V([^.]+(\.[^.]+)*)\.img$ ]]; then
+  BOARD_NAME=${BASH_REMATCH[1]}
+  BOARD_SHORT_NAME=${BOARD_NAME#Ender-3_V3_KE_}
   CREALITY_VERSION=${BASH_REMATCH[2]}
 else
-  echo "Invalid image filename: $filename" >&2
+  echo "Invalid image filename: $old_image_name" >&2
   exit 1
 fi
 
@@ -49,11 +50,13 @@ fi
 FIRMWARE_PASSWORD=$(mkpasswd -m md5 "${BOARD_SHORT_NAME}C3_7e_bz" -S cxswfile)
 
 version="7.${CREALITY_VERSION}"
-old_directory="${BOARD_SHORT_NAME}_ota_img_V${CREALITY_VERSION}"
+old_directory="${BOARD_NAME}_ota_img_V${CREALITY_VERSION}"
 old_sub_directory="ota_v${CREALITY_VERSION}"
-directory="${BOARD_SHORT_NAME}_ota_img_V${version}"
+directory="${BOARD_NAME}_ota_img_V${version}"
 sub_directory="ota_v${version}"
-image_name="${BOARD_SHORT_NAME}_ota_img_V${version}".img
+image_name="${BOARD_NAME}_ota_img_V${version}".img
+# for the decrypted rootfs
+rootfs_filename="${BOARD_NAME}_ota_img_V${version}.rootfs.squashfs"
 
 function write_ota_info() {
     echo "ota_version=${version}" > /tmp/${version}-pellcorp/ota_info
@@ -115,6 +118,9 @@ cp /tmp/$old_directory/$old_sub_directory/ota_md5_zero.bin* /tmp/${version}-pell
 cp /tmp/$old_directory/$old_sub_directory/zero.bin.* /tmp/${version}-pellcorp/$directory/$sub_directory/
 cp /tmp/$old_directory/$old_sub_directory/xImage.* /tmp/${version}-pellcorp/$directory/$sub_directory/
 
+# make a copy of the decrypted rootfs before its split up
+cp /tmp/${version}-pellcorp/rootfs.squashfs /out/$rootfs_filename
+
 pushd /tmp/${version}-pellcorp/$directory/$sub_directory > /dev/null
 split -d -b 1048576 -a 4 /tmp/${version}-pellcorp/rootfs.squashfs rootfs.squashfs.
 popd > /dev/null
@@ -140,6 +146,8 @@ pushd /tmp/${version}-pellcorp/ > /dev/null
 7z a ${image_name}.7z -p"$FIRMWARE_PASSWORD" $directory
 mv ${image_name}.7z /out/${image_name}
 popd > /dev/null
+
+echo "Resulting decrypted rootfs is /tmp/$rootfs_filename"
 
 # assuming we call this docker with /tmp:/out
 echo "The image is /tmp/${image_name}"
