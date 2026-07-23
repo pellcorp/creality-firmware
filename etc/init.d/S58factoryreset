@@ -1,0 +1,127 @@
+#!/bin/sh
+
+factory_reset() {
+    # skip startup routine
+    if [ -f /usr/data/creality/userdata/config/system_config.json ]; then
+        sed -i 's/"self_test_sw":1/"self_test_sw":0/' /usr/data/creality/userdata/config/system_config.json
+    fi
+    
+    /usr/bin/mcu_reset.sh >/dev/null 2>&1
+    ACTION=stop /usr/bin/auto_uvc.sh >/dev/null 2>&1
+    [ -f /etc/init.d/S50nginx_service ] && /etc/init.d/S50nginx_service stop >/dev/null 2>&1
+    [ -f /etc/init.d/S99guppyscreen ] && /etc/init.d/S99guppyscreen stop >/dev/null 2>&1
+    [ -f /etc/init.d/S99grumpyscreen ] && /etc/init.d/S99grumpyscreen stop >/dev/null 2>&1
+    [ -f /etc/init.d/S50webcam ] && /etc/init.d/S50webcam stop >/dev/null 2>&1
+    [ -f /etc/init.d/S56moonraker_service ] && /etc/init.d/S56moonraker_service stop >/dev/null 2>&1
+    [ -f /etc/init.d/S55klipper_service ] && /etc/init.d/S55klipper_service stop >/dev/null 2>&1
+    /usr/bin/find /overlay/upper/ \
+        -path '/overlay/upper/etc/dropbear' -prune -o \
+        -path /overlay/upper/etc/localtime -prune -o \
+        -path /overlay/upper/usr/bin/get_sn_mac.sh -prune -o \
+        -path /overlay/upper/etc/init.d/S58factoryreset -prune -o \
+        -exec rm {} \; >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+    /usr/bin/find /overlay/upper/ -type d \
+        -depth -print \
+        -exec rmdir {} \; >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+    /usr/bin/find /usr/data/ \
+        -path '/usr/data/creality' -prune -o \
+        -path '/usr/data/printer_data' -prune -o \
+        -path '/usr/data/wpa_supplicant.conf' -prune -o \
+        -path '/usr/data/backups' -prune -o \
+        -path '/usr/data/macaddr.txt' -prune -o \
+        -path '/usr/data/ethmacaddr.txt' -prune -o \
+        -path '/usr/data/pellcorp' -prune -o \
+        -path '/usr/data/machine_production_info' -prune -o \
+        -path '/usr/data/' -o -print \
+        -exec rm -rf {} \; >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+    /usr/bin/find /usr/data/creality/userdata \
+        -path '/usr/data/creality/userdata/config/system_config.json' -prune -o \
+        -path '/usr/data/creality/userdata/config/user_data_not_deleted.json' -prune -o \
+        -path '/usr/data/creality/userdata/user_agree_root' -prune -o \
+        -path '/usr/data/creality/userdata' -o -type d -o -print \
+        -exec rm {} \; >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+    # cleanup all but logs for printer_data
+    /usr/bin/find /usr/data/printer_data/ \
+            -path '/usr/data/printer_data/logs' -prune -o \
+            -path '/usr/data/printer_data/' -o -print \
+            -exec rm -rf {} \; >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+    # cleanup the logs all except for guppyscreen and factoryreset logs
+    /usr/bin/find /usr/data/printer_data/logs \
+                -path '/usr/data/printer_data/logs/grumpyscreen.log' -prune -o \
+                -path '/usr/data/printer_data/logs/factoryreset.log' -prune -o \
+                -path '/usr/data/printer_data/logs' -o -type d -o -print \
+                -exec rm {} \; >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+    rm -rf /overlay/upper/usr/data/
+    /bin/sync >/dev/null 2>&1
+    rm -rf /overlay/upper/usr/share/
+    /bin/sync >/dev/null 2>&1
+    /usr/bin/find /usr/data/creality/ \
+        -depth -print \
+        -exec rmdir {} \; >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+
+    # for some reason sometimes /opt directory is present
+    [ -d /opt ] && rm -rf /opt
+    /bin/sync >/dev/null 2>&1
+
+    echo "INFO: Factory reset was executed successfully, the printer will restart..."
+    /etc/init.d/rcK >/dev/null 2>&1
+    /bin/sync >/dev/null 2>&1
+    /sbin/swapoff -a >/dev/null 2>&1
+    /sbin/reboot -f >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+      # for whatever reason some dodgy usb keys will get mounted to /tmp/udisk/sda
+      # or /tmp/udisk/sda2 (usually if there is more than one partition on the usb
+      FLAG_FILE=$(ls /tmp/udisk/sda*/emergency_factory_reset 2> /dev/null)
+      if [ $? -eq 0 ] && [ "x$FLAG_FILE" != "x" ]; then
+          # there should never be a case where it gets more than one file but
+          # lets just make sure
+          FLAG_FILE=$(echo $FLAG_FILE | awk '{print $1}')
+          echo "INFO: Executing factory reset..."
+          mv "$FLAG_FILE" "${FLAG_FILE}.old" >/dev/null 2>&1
+          echo "Factory reset triggered by flag file $FLAG_FILE" > /usr/data/printer_data/logs/factoryreset.log
+          /bin/sync >/dev/null 2>&1
+
+          # we want to unmount the device cleanly
+          MOUNT_DEVICE=$(echo $FLAG_FILE | awk -F '/' '{print $4}')
+          umount $MOUNT_DEVICE
+
+          factory_reset
+      else
+          echo "INFO: No 'emergency_factory_reset' file found on the USB drive!"
+          exit 1
+      fi
+    ;;
+
+    reset)
+        # so for cases where a user is running a factory reset and its not
+        # from helper script, we want the factory reset facility to be available
+        # in case something happens
+        diff -q $0 /etc/init.d/S58factoryreset > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "INFO: Copying $0 to /etc/init.d/S58factoryreset ..."
+            cp $0 /etc/init.d/S58factoryreset
+            chmod 777 /etc/init.d/S58factoryreset
+            /bin/sync >/dev/null 2>&1
+        fi
+
+        echo "Factory reset triggered by command" > /usr/data/printer_data/logs/factoryreset.log
+        echo "INFO: Executing factory reset..."
+        factory_reset
+    ;;
+    *)
+        echo "Usage: $0 {start|reset}"
+        exit 1
+        ;;
+esac
+
+exit 0
