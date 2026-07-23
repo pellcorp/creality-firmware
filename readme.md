@@ -31,7 +31,7 @@ This now works via Docker to ensure that the same tools are used for every firmw
 
 The resulting img file will be located at `/tmpCR4CU220812S11_ota_img_V6.1.3.3.8.img`
 
-## Testing
+### Testing
 
 It's very important to test this in the safest way possible, luckily creality has provided a way to test
 a new firmware image from the cli rather than relying on the display server
@@ -39,6 +39,18 @@ a new firmware image from the cli rather than relying on the display server
 ```
 /etc/ota_bin/local_ota_update.sh /tmp/udisk/sda1/CR4CU220812S11_ota_img_V6.1.3.3.8.img
 ```
+
+## Decrypting
+
+Want access to the rootfs without having to stuff around, I added a decrypt action to extract the firmware and produce a .rootfs.squashfs that you
+can mount via an image mounter
+
+```
+docker build . -t pellcorp/creality-firmware
+./decrypt ~/Downloads/CR4CU220812S11_ota_img_V1.3.3.8.img
+```
+
+The resulting file will be located at `/tmp/CR4CU220812S11_ota_img_V1.3.3.8.rootfs.squashfs`
 
 ## Thanks
 
