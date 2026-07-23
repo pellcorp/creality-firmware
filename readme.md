@@ -14,7 +14,7 @@ And pre-roots them, adds an emergency factory reset and a way to configure wifi 
 
 ## Creating
 
-Then you can create a new firmware file, currently without any customisations just to test things work with:
+To pre-root a downloaded firmware file, its very easy:
 
 ```
 docker build . -t pellcorp/creality-firmware
