@@ -1,20 +1,16 @@
 # Custom Firmware
 
-A script to create custom firmware providing firmware for the k1 that has been pre-rooted, ssh-enabled and 
-my emergency firmware factory reset feature installed.  This is very minimal changes on top of the default
-firmware it is not to compete with the pre-rooted firmware from Destinal which includes Moonraker, Fluidd, etc
+This script takes Creality MIPS firmware for various machines including:
+
+- K1, K1C, K1SE and K1M
+- Ender 5 Max (F004)
+- Ender 3 V3 (F001)
+- Ender 3 V3 KE (F005)
+- NEBULA
+
+And pre-roots them, adds an emergency factory reset and a way to configure wifi via USB key for emergency reasons.
 
 **I WILL NOT BE HELD RESPONSIBLE IF YOU BRICK YOUR PRINTER - CREATING AND INSTALLING CUSTOM FIRMWARE IS RISKY**
-
-## Why I did it?
-
-I mostly did this so I could iterate my Simple AF K1 Klipper project, because factory resetting, configuring WIFI,
- then enabling root takes at least 1 minute.   With my `S58factoryreset` process it leaves the wifi configuration
- alone.
-
- I was considering packaging my Simple AF K1 Klipper as a firmware image, but I actually don't think that is such
- a good idea, as all you can do is create a `/etc/init.d` file that gets triggered on startup to actually
- do the install, and the user has no idea whether it succeeded or not!
 
 ## Creating
 
