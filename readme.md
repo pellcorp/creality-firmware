@@ -40,16 +40,17 @@ a new firmware image from the cli rather than relying on the display server
 - For K1 variants it's `creality_2023`
 - For others it's whatever the default is!
 
-## Decrypting
+## Extracting
 
-Want access to the rootfs without having to stuff around, I added a decrypt action to extract the firmware and produce a .rootfs.squashfs that you
-can mount via an image mounter
+Want access to the rootfs, xImage and zero.bin without having to stuff around, I added a extract action to extract the firmware and produce a rootfs.squashfs, xImage and zero.bin.
+
+The rootfs.squashfs you can mount via an image mounter
 
 ```
-./decrypt ~/Downloads/CR4CU220812S11_ota_img_V1.3.3.8.img
+./extract ~/Downloads/CR4CU220812S11_ota_img_V1.3.3.8.img
 ```
 
-The resulting file will be located at `/tmp/CR4CU220812S11_ota_img_V1.3.3.8.rootfs.squashfs`
+The extracted files will be located at `/tmp/CR4CU220812S11_ota_img_V1.3.3.8/`
 
 ## Thanks
 
