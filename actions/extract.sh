@@ -55,12 +55,12 @@ fi
 
 7z x $old_image_name -p"$FIRMWARE_PASSWORD" -o/tmp
 rootfs_filename=$(basename $old_image_name | sed 's/\.img/.rootfs.squashfs/g')
-ls /tmp/$old_directory/$old_sub_directory/
+
 mkdir -p /out/${BOARD_NAME}
 cat /tmp/$old_directory/$old_sub_directory/rootfs.squashfs.* > /out/${BOARD_NAME}/rootfs.squashfs
 cat /tmp/$old_directory/$old_sub_directory/xImage.* > /out/${BOARD_NAME}/xImage
 cat /tmp/$old_directory/$old_sub_directory/zero.bin.* > /out/${BOARD_NAME}/zero.bin
 
-echo "Resulting rootfs is /tmp/${BOARD_NAME}/"
+echo "Resulting files are in /tmp/${BOARD_NAME}/"
 
 rm -rf /tmp/$old_directory
