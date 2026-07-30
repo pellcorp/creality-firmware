@@ -41,9 +41,14 @@ typedef struct {
 
 #include "Terminus12.h"
 #include "Terminus14.h"
+#include "Terminus18.h"
+#include "Terminus20.h"
+#include "Terminus22.h"
+#include "Terminus24.h"
+#include "Terminus28.h"
+#include "Terminus32.h"
 
-static const GFXfont *find_font(const char *name)
-{
+static const GFXfont *find_font(const char *name) {
     if (strcmp(name, "terminus") == 0 ||
         strcmp(name, "term") == 0 ||
         strcmp(name, "term12") == 0) {
@@ -52,6 +57,30 @@ static const GFXfont *find_font(const char *name)
 
     if (strcmp(name, "term14") == 0) {
         return &Terminus14;
+    }
+
+    if (strcmp(name, "term18") == 0) {
+        return &Terminus18;
+    }
+
+    if (strcmp(name, "term20") == 0) {
+        return &Terminus20;
+    }
+
+    if (strcmp(name, "term22") == 0) {
+        return &Terminus22;
+    }
+
+    if (strcmp(name, "term24") == 0) {
+        return &Terminus24;
+    }
+
+    if (strcmp(name, "term28") == 0) {
+        return &Terminus28;
+    }
+
+    if (strcmp(name, "term32") == 0) {
+        return &Terminus32;
     }
 
     fprintf(
@@ -67,6 +96,7 @@ struct framebuffer {
     int file_descriptor;
     uint8_t *memory;
     size_t memory_length;
+    unsigned int rotation;
 
     struct fb_fix_screeninfo fixed;
     struct fb_var_screeninfo variable;
@@ -85,23 +115,26 @@ static void usage(const char *program)
     fprintf(
         stderr,
         "Usage:\n"
-        "  %s [-f /dev/fb0] clear RRGGBB\n"
-        "  %s [-f /dev/fb0] rect X Y WIDTH HEIGHT RRGGBB\n"
-        "  %s [-f /dev/fb0] text X Y SCALE RRGGBB TEXT...\n"
-        "  %s [-f /dev/fb0] console [FONT [SCALE [FOREGROUND [BACKGROUND]]]]\n"
+        "  %s [-f /dev/fb0] [-r 0|90|180|270] clear RRGGBB\n"
+        "  %s [-f /dev/fb0] [-r 0|90|180|270] rect X Y WIDTH HEIGHT RRGGBB\n"
+        "  %s [-f /dev/fb0] [-r 0|90|180|270] text X Y SCALE RRGGBB TEXT...\n"
+        "  %s [-f /dev/fb0] [-r 0|90|180|270] console [FONT [SCALE [FOREGROUND [BACKGROUND]]]]\n"
         "\n"
         "Examples:\n"
         "  %s clear 000000\n"
+        "  %s -r 90 clear 000000\n"
         "  %s rect 10 10 100 40 ff0000\n"
         "  %s text 10 10 2 ffffff \"Hello world\"\n"
         "  ./install.sh 2>&1 | %s console terminus\n"
-        "  ./install.sh 2>&1 | %s console term14 2 ffffff 000000\n"
+        "  ./install.sh 2>&1 | %s -r 270 console term14 2 ffffff 000000\n"
         "\n"
         "Console defaults:\n"
+        "  ROTATION   0\n"
         "  FONT       terminus\n"
         "  SCALE      1\n"
         "  FOREGROUND ffffff\n"
         "  BACKGROUND 000000\n",
+        program,
         program,
         program,
         program,
@@ -178,6 +211,27 @@ static uint32_t parse_rgb(const char *text)
     }
 
     return (uint32_t)value;
+}
+
+static unsigned int parse_rotation(const char *text)
+{
+    const int rotation =
+        parse_int(text, "rotation");
+
+    switch (rotation) {
+    case 0:
+    case 90:
+    case 180:
+    case 270:
+        return (unsigned int)rotation;
+
+    default:
+        fprintf(
+            stderr,
+            "Rotation must be one of: 0, 90, 180, 270\n");
+
+        exit(EXIT_FAILURE);
+    }
 }
 
 static void open_framebuffer(
@@ -338,23 +392,93 @@ static uint32_t framebuffer_colour(
     return value;
 }
 
-static void put_pixel(
+static int framebuffer_width(
+    const struct framebuffer *framebuffer)
+{
+    return (int)framebuffer->variable.xres;
+}
+
+static int framebuffer_height(
+    const struct framebuffer *framebuffer)
+{
+    return (int)framebuffer->variable.yres;
+}
+
+static int framebuffer_logical_width(
+    const struct framebuffer *framebuffer)
+{
+    if (framebuffer->rotation == 90u ||
+        framebuffer->rotation == 270u) {
+        return framebuffer_height(framebuffer);
+    }
+
+    return framebuffer_width(framebuffer);
+}
+
+static int framebuffer_logical_height(
+    const struct framebuffer *framebuffer)
+{
+    if (framebuffer->rotation == 90u ||
+        framebuffer->rotation == 270u) {
+        return framebuffer_width(framebuffer);
+    }
+
+    return framebuffer_height(framebuffer);
+}
+
+static void map_logical_pixel(
+    const struct framebuffer *framebuffer,
+    const int x,
+    const int y,
+    int *physical_x,
+    int *physical_y)
+{
+    const int width =
+        framebuffer_width(framebuffer);
+
+    const int height =
+        framebuffer_height(framebuffer);
+
+    switch (framebuffer->rotation) {
+    case 90:
+        *physical_x = width - 1 - y;
+        *physical_y = x;
+        break;
+
+    case 180:
+        *physical_x = width - 1 - x;
+        *physical_y = height - 1 - y;
+        break;
+
+    case 270:
+        *physical_x = y;
+        *physical_y = height - 1 - x;
+        break;
+
+    case 0:
+    default:
+        *physical_x = x;
+        *physical_y = y;
+        break;
+    }
+}
+
+static void put_physical_pixel(
     struct framebuffer *framebuffer,
     const int x,
     const int y,
-    const uint32_t rgb)
+    const uint32_t value)
 {
     const int width =
-        (int)framebuffer->variable.xres;
+        framebuffer_width(framebuffer);
 
     const int height =
-        (int)framebuffer->variable.yres;
+        framebuffer_height(framebuffer);
 
     const size_t bytes_per_pixel =
         framebuffer->variable.bits_per_pixel / 8u;
 
     size_t offset;
-    uint32_t value;
 
     if (x < 0 || y < 0 || x >= width || y >= height) {
         return;
@@ -370,8 +494,6 @@ static void put_pixel(
         framebuffer->memory_length) {
         return;
     }
-
-    value = framebuffer_colour(framebuffer, rgb);
 
     switch (bytes_per_pixel) {
     case 2:
@@ -404,6 +526,86 @@ static void put_pixel(
     }
 }
 
+static uint32_t get_physical_pixel(
+    const struct framebuffer *framebuffer,
+    const int x,
+    const int y)
+{
+    const int width =
+        framebuffer_width(framebuffer);
+
+    const int height =
+        framebuffer_height(framebuffer);
+
+    const size_t bytes_per_pixel =
+        framebuffer->variable.bits_per_pixel / 8u;
+
+    size_t offset;
+
+    if (x < 0 || y < 0 || x >= width || y >= height) {
+        return 0u;
+    }
+
+    offset =
+        ((size_t)y + framebuffer->variable.yoffset) *
+            framebuffer->fixed.line_length +
+        ((size_t)x + framebuffer->variable.xoffset) *
+            bytes_per_pixel;
+
+    if (offset + bytes_per_pixel >
+        framebuffer->memory_length) {
+        return 0u;
+    }
+
+    switch (bytes_per_pixel) {
+    case 2:
+        {
+            uint16_t pixel;
+            memcpy(&pixel, framebuffer->memory + offset, sizeof(pixel));
+            return pixel;
+        }
+
+    case 3:
+        return
+            (uint32_t)framebuffer->memory[offset] |
+            ((uint32_t)framebuffer->memory[offset + 1u] << 8u) |
+            ((uint32_t)framebuffer->memory[offset + 2u] << 16u);
+
+    case 4:
+        {
+            uint32_t pixel;
+            memcpy(&pixel, framebuffer->memory + offset, sizeof(pixel));
+            return pixel;
+        }
+
+    default:
+        return 0u;
+    }
+}
+
+static void put_pixel(
+    struct framebuffer *framebuffer,
+    const int x,
+    const int y,
+    const uint32_t rgb)
+{
+    int physical_x;
+    int physical_y;
+
+    map_logical_pixel(
+        framebuffer,
+        x,
+        y,
+        &physical_x,
+        &physical_y);
+
+    put_physical_pixel(
+        framebuffer,
+        physical_x,
+        physical_y,
+        framebuffer_colour(framebuffer, rgb));
+}
+
 static void fill_rect(
     struct framebuffer *framebuffer,
     int x,
@@ -426,8 +628,8 @@ static void fill_rect(
         return;
     }
 
-    if (x >= (int)framebuffer->variable.xres ||
-        y >= (int)framebuffer->variable.yres) {
+    if (x >= framebuffer_logical_width(framebuffer) ||
+        y >= framebuffer_logical_height(framebuffer)) {
         return;
     }
 
@@ -439,12 +641,12 @@ static void fill_rect(
         y = 0;
     }
 
-    if (end_x > (int)framebuffer->variable.xres) {
-        end_x = (int)framebuffer->variable.xres;
+    if (end_x > framebuffer_logical_width(framebuffer)) {
+        end_x = framebuffer_logical_width(framebuffer);
     }
 
-    if (end_y > (int)framebuffer->variable.yres) {
-        end_y = (int)framebuffer->variable.yres;
+    if (end_y > framebuffer_logical_height(framebuffer)) {
+        end_y = framebuffer_logical_height(framebuffer);
     }
 
     for (int current_y = y;
@@ -470,8 +672,8 @@ static void clear_framebuffer(
         framebuffer,
         0,
         0,
-        (int)framebuffer->variable.xres,
-        (int)framebuffer->variable.yres,
+        framebuffer_logical_width(framebuffer),
+        framebuffer_logical_height(framebuffer),
         colour);
 }
 
@@ -480,22 +682,11 @@ static void scroll_framebuffer(
     const int pixels,
     const uint32_t background)
 {
+    const int screen_width =
+        framebuffer_logical_width(framebuffer);
+
     const int screen_height =
-        (int)framebuffer->variable.yres;
-
-    const size_t bytes_per_pixel =
-        framebuffer->variable.bits_per_pixel / 8u;
-
-    const size_t visible_row_bytes =
-        (size_t)framebuffer->variable.xres *
-        bytes_per_pixel;
-
-    const size_t x_offset =
-        (size_t)framebuffer->variable.xoffset *
-        bytes_per_pixel;
-
-    const size_t first_row =
-        framebuffer->variable.yoffset;
+        framebuffer_logical_height(framebuffer);
 
     if (pixels <= 0) {
         return;
@@ -507,29 +698,42 @@ static void scroll_framebuffer(
     }
 
     for (int y = 0; y < screen_height - pixels; y++) {
-        uint8_t *destination =
-            framebuffer->memory +
-            (first_row + (size_t)y) *
-                framebuffer->fixed.line_length +
-            x_offset;
+        for (int x = 0; x < screen_width; x++) {
+            int destination_x;
+            int destination_y;
+            int source_x;
+            int source_y;
 
-        const uint8_t *source =
-            framebuffer->memory +
-            (first_row + (size_t)y + (size_t)pixels) *
-                framebuffer->fixed.line_length +
-            x_offset;
+            map_logical_pixel(
+                framebuffer,
+                x,
+                y,
+                &destination_x,
+                &destination_y);
 
-        memmove(
-            destination,
-            source,
-            visible_row_bytes);
+            map_logical_pixel(
+                framebuffer,
+                x,
+                y + pixels,
+                &source_x,
+                &source_y);
+
+            put_physical_pixel(
+                framebuffer,
+                destination_x,
+                destination_y,
+                get_physical_pixel(
+                    framebuffer,
+                    source_x,
+                    source_y));
+        }
     }
 
     fill_rect(
         framebuffer,
         0,
         screen_height - pixels,
-        (int)framebuffer->variable.xres,
+        screen_width,
         pixels,
         background);
 }
@@ -698,7 +902,7 @@ static void console_newline(
     *line_top += line_height;
 
     if (*line_top + line_height >
-        (int)framebuffer->variable.yres) {
+        framebuffer_logical_height(framebuffer)) {
         scroll_framebuffer(
             framebuffer,
             line_height,
@@ -749,7 +953,7 @@ static void clear_console_line(
         framebuffer,
         0,
         line_top,
-        (int)framebuffer->variable.xres,
+        framebuffer_logical_width(framebuffer),
         line_height,
         background);
 }
@@ -778,7 +982,7 @@ static void run_console(
     const uint32_t background)
 {
     const int screen_width =
-        (int)framebuffer->variable.xres;
+        framebuffer_logical_width(framebuffer);
 
     const int line_height =
         (int)font->yAdvance * scale;
@@ -1080,13 +1284,25 @@ int main(int argc, char **argv)
 
     const char *framebuffer_device = "/dev/fb0";
     const char *command;
+    unsigned int rotation = 0u;
 
     int argument = 1;
 
-    if (argc >= 3 &&
-        strcmp(argv[1], "-f") == 0) {
-        framebuffer_device = argv[2];
-        argument = 3;
+    while (argument + 1 < argc) {
+        if (strcmp(argv[argument], "-f") == 0) {
+            framebuffer_device = argv[argument + 1];
+            argument += 2;
+            continue;
+        }
+
+        if (strcmp(argv[argument], "-r") == 0) {
+            rotation =
+                parse_rotation(argv[argument + 1]);
+            argument += 2;
+            continue;
+        }
+
+        break;
     }
 
     if (argument >= argc) {
@@ -1099,6 +1315,8 @@ int main(int argc, char **argv)
     open_framebuffer(
         &framebuffer,
         framebuffer_device);
+
+    framebuffer.rotation = rotation;
 
     if (strcmp(command, "clear") == 0) {
         uint32_t colour;
