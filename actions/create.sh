@@ -17,12 +17,6 @@ for command in $commands; do
     fi
 done
 
-# CR4CU220812S11_ota_img_V6.1.3.3.8.img
-# NEBULA_ota_img_V1.1.0.29.img
-# Ender-3_V3_KE_F005_ota_img_V1.1.0.15.img
-# F001_ota_img_V1.2.3.28.img
-# F004_ota_img_V1.2.0.20.img
-
 if [ $# -eq 0 ]; then
   echo "Usage: $(basename $0) <downloaded image>"
   exit 1
@@ -153,11 +147,9 @@ function customise_rootfs() {
     [ -d $CURRENT_DIR/opt ] && rm -rf $CURRENT_DIR/opt
     sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
 
-    # I am not sure if for other boards setting a password will cause a boot loop, so im just doing it for nebula for now
-    if [ "$BOARD_SHORT_NAME" = "NEBULA" ]; then
-      root_hash='root:$1$C91t0g0z$MH9VBdqKSXjvrKNEw7wqG/:19562::::::'
-      sudo sed -i "/^root/c\\$(printf '%s\n' "$root_hash")" "$work_dir/squashfs-root/etc/shadow"
-    fi
+    # everyone gets `Creality2023` :-)
+    root_hash='root:$5$Z96nzwZv.IE3hn7t$WJw4O.VbtjHblc0cCbaT3r3fsiNNo0yCNHTztCe5zND:::::::'
+    sudo sed -i "/^root/c\\$(printf '%s\n' "$root_hash")" "$work_dir/squashfs-root/etc/shadow"
 }
 
 function update_rootfs() {
