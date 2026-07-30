@@ -33,14 +33,20 @@ Usage:
   ./fbtext [-f /dev/fb0] [-r 0|90|180|270] rect X Y WIDTH HEIGHT RRGGBB
   ./fbtext [-f /dev/fb0] [-r 0|90|180|270] text X Y SCALE RRGGBB TEXT...
   ./fbtext [-f /dev/fb0] [-r 0|90|180|270] console [FONT [SCALE [FOREGROUND [BACKGROUND]]]]
+  ./fbtext [-f /dev/fb0] [-R 0|1|2|3] clear RRGGBB
+  ./fbtext [-f /dev/fb0] [-R 0|1|2|3] rect X Y WIDTH HEIGHT RRGGBB
+  ./fbtext [-f /dev/fb0] [-R 0|1|2|3] text X Y SCALE RRGGBB TEXT...
+  ./fbtext [-f /dev/fb0] [-R 0|1|2|3] console [FONT [SCALE [FOREGROUND [BACKGROUND]]]]
 
 Examples:
   ./fbtext clear 000000
   ./fbtext -r 90 clear 000000
+  ./fbtext -R 3 clear 000000
   ./fbtext rect 10 10 100 40 ff0000
   ./fbtext text 10 10 2 ffffff "Hello world"
   ./install.sh 2>&1 | ./fbtext console terminus
   ./install.sh 2>&1 | ./fbtext -r 270 console term14 2 ffffff 000000
+  ./install.sh 2>&1 | ./fbtext -R 3 console term14 2 ffffff 000000
 
 Console defaults:
   ROTATION   0

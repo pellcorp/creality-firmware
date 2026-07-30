@@ -119,14 +119,20 @@ static void usage(const char *program)
         "  %s [-f /dev/fb0] [-r 0|90|180|270] rect X Y WIDTH HEIGHT RRGGBB\n"
         "  %s [-f /dev/fb0] [-r 0|90|180|270] text X Y SCALE RRGGBB TEXT...\n"
         "  %s [-f /dev/fb0] [-r 0|90|180|270] console [FONT [SCALE [FOREGROUND [BACKGROUND]]]]\n"
+        "  %s [-f /dev/fb0] [-R 0|1|2|3] clear RRGGBB\n"
+        "  %s [-f /dev/fb0] [-R 0|1|2|3] rect X Y WIDTH HEIGHT RRGGBB\n"
+        "  %s [-f /dev/fb0] [-R 0|1|2|3] text X Y SCALE RRGGBB TEXT...\n"
+        "  %s [-f /dev/fb0] [-R 0|1|2|3] console [FONT [SCALE [FOREGROUND [BACKGROUND]]]]\n"
         "\n"
         "Examples:\n"
         "  %s clear 000000\n"
         "  %s -r 90 clear 000000\n"
+        "  %s -R 3 clear 000000\n"
         "  %s rect 10 10 100 40 ff0000\n"
         "  %s text 10 10 2 ffffff \"Hello world\"\n"
         "  ./install.sh 2>&1 | %s console terminus\n"
         "  ./install.sh 2>&1 | %s -r 270 console term14 2 ffffff 000000\n"
+        "  ./install.sh 2>&1 | %s -R 3 console term14 2 ffffff 000000\n"
         "\n"
         "Console defaults:\n"
         "  ROTATION   0\n"
@@ -134,6 +140,12 @@ static void usage(const char *program)
         "  SCALE      1\n"
         "  FOREGROUND ffffff\n"
         "  BACKGROUND 000000\n",
+        program,
+        program,
+        program,
+        program,
+        program,
+        program,
         program,
         program,
         program,
@@ -229,6 +241,33 @@ static unsigned int parse_rotation(const char *text)
         fprintf(
             stderr,
             "Rotation must be one of: 0, 90, 180, 270\n");
+
+        exit(EXIT_FAILURE);
+    }
+}
+
+static unsigned int parse_lvgl_rotation(const char *text)
+{
+    const int rotation =
+        parse_int(text, "lvgl rotation");
+
+    switch (rotation) {
+    case 0:
+        return 0u;
+
+    case 1:
+        return 270u;
+
+    case 2:
+        return 180u;
+
+    case 3:
+        return 90u;
+
+    default:
+        fprintf(
+            stderr,
+            "LVGL rotation must be one of: 0, 1, 2, 3\n");
 
         exit(EXIT_FAILURE);
     }
@@ -1298,6 +1337,13 @@ int main(int argc, char **argv)
         if (strcmp(argv[argument], "-r") == 0) {
             rotation =
                 parse_rotation(argv[argument + 1]);
+            argument += 2;
+            continue;
+        }
+
+        if (strcmp(argv[argument], "-R") == 0) {
+            rotation =
+                parse_lvgl_rotation(argv[argument + 1]);
             argument += 2;
             continue;
         }
