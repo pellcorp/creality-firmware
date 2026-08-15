@@ -27,5 +27,5 @@ You just have to grab the zero.bin, xImage and rootfs.squashfs from the firmware
 **Note:** I am not entirely sure what the `u-boot-with-spl-mbr-gpt.bin` is for, so trying to build an .ingenic image for a K1 from Ender 3 V3 KE .ingenic
 might be problematic.
 
-Thanks for destinal for providing advice on creating updated .ingenic images, including confirming all he did to create the https://www.openk1.org/cfw/NEBULA_1.1.0.26.ingenic was
+    Thanks for destinal for providing advice on creating updated .ingenic images, including confirming all he did to create the https://www.openk1.org/cfw/NEBULA_1.1.0.26.ingenic was
 to replace the 3 files in the images/ directory and rezip.

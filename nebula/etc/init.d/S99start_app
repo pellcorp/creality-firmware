@@ -1,0 +1,48 @@
+#!/bin/sh
+
+PROG=/usr/bin/bootstrap-server
+PID_FILE=/var/run/bootstrap-server.pid
+
+start_server(){
+    # kill the boot display so it does not keep showing over top of grumpyscreen
+    killall boot_display 2> /dev/null
+    # display black transition image to stop the corrupt image being shown
+    cmd_jpeg_display /usr/data/pellcorp/k1/black.jpg &
+
+    sync && echo 3 > /proc/sys/vm/drop_caches
+    start-stop-daemon -S -q -b -m -p $PID_FILE --exec $PROG
+}
+
+stop_server() {
+  local service_pid="$(cat $PID_FILE 2> /dev/null)"
+  local is_running=false
+  if [ -n "$service_pid" ] && [ -d /proc/"$service_pid" ]; then
+    is_running=true
+  fi
+
+  start-stop-daemon -K -q -p $PID_FILE > /dev/null 2>&1
+
+  if [ "$is_running" = "true" ]; then
+      # after stopping bootstrap, clear the screen with this afterwards to avoid showing a corrupted image
+      cmd_jpeg_display /etc/logo/black.jpg
+  fi
+}
+
+case "$1" in
+    start)
+        start_server
+        ;;
+    stop)
+        stop_server
+        ;;
+    restart|reload)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage:"
+        echo "    $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $?

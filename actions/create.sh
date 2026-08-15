@@ -18,7 +18,14 @@ for command in $commands; do
 done
 
 if [ $# -eq 0 ]; then
-  echo "Usage: $(basename $0) <downloaded image>"
+  echo "Usage: $(basename $0) <downloaded image> [--custom_nebula]"
+  exit 1
+fi
+
+custom="${2:-}"
+if [ -n "$custom" ] && [ "$custom" != "--custom_nebula" ]; then
+  echo "FATAL: Unknown option: $custom" >&2
+  echo "Usage: $(basename $0) <downloaded image> [--custom_nebula]" >&2
   exit 1
 fi
 
@@ -91,6 +98,7 @@ function validate_ota_image() {
     local validation_payload_dir="$validation_dir/$directory/$sub_directory"
     local validation_rootfs="$validation_dir/rootfs.squashfs"
     local -a rootfs_parts
+    local -a zero_parts
     local part
     local expected_part_md5
     local actual_part_md5
@@ -131,6 +139,38 @@ function validate_ota_image() {
         fail "Rootfs part checksum manifest has an unexpected number of entries"
 
     validate_rootfs "$validation_rootfs" "Reassembled rootfs"
+
+    if [ "$custom" = "--custom_nebula" ]; then
+        require_file "$validation_payload_dir/ota_md5_zero.bin.${zero_md5}"
+
+        shopt -s nullglob
+        zero_parts=("$validation_payload_dir"/zero.bin.*)
+        shopt -u nullglob
+        [ "${#zero_parts[@]}" -gt 0 ] || fail "New OTA image contains no zero.bin parts"
+
+        cat "${zero_parts[@]}" > "$validation_dir/zero.bin" || \
+            fail "Unable to reassemble zero.bin from OTA image"
+        [ "$(md5sum "$validation_dir/zero.bin" | awk '{print $1}')" = "$zero_md5" ] || \
+            fail "Reassembled zero.bin checksum does not match the custom image"
+        [ "$(stat -c%s "$validation_dir/zero.bin")" = "$zero_size" ] || \
+            fail "Reassembled zero.bin size does not match the custom image"
+        grep -qx "img_md5=$zero_md5" "$validation_payload_dir/ota_update.in" || \
+            fail "ota_update.in has an incorrect zero.bin checksum"
+        grep -qx "img_size=$zero_size" "$validation_payload_dir/ota_update.in" || \
+            fail "ota_update.in has an incorrect zero.bin size"
+
+        part_number=1
+        for part in "${zero_parts[@]}"; do
+            expected_part_md5=$(md5sum "$part" | awk '{print $1}')
+            actual_part_md5=$(sed -n "${part_number}p" "$validation_payload_dir/ota_md5_zero.bin.${zero_md5}")
+            [ "$expected_part_md5" = "$actual_part_md5" ] || \
+                fail "zero.bin part checksum chain is invalid for $(basename "$part")"
+            part_number=$((part_number + 1))
+        done
+        [ "$(wc -l < "$validation_payload_dir/ota_md5_zero.bin.${zero_md5}")" -eq "${#zero_parts[@]}" ] || \
+            fail "zero.bin part checksum manifest has an unexpected number of entries"
+    fi
+
     rm -rf "$validation_dir"
 }
 
@@ -142,10 +182,53 @@ function write_ota_info() {
     sudo cp "$work_dir/ota_info" "$work_dir/squashfs-root/etc/"
 }
 
+function custom_nebula_rootfs() {
+  sudo cp $PARENT_DIR/nebula/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
+  sudo cp $PARENT_DIR/nebula/usr/bin/* "$work_dir/squashfs-root/usr/bin/"
+  sudo rm -rf "$work_dir/squashfs-root/etc/logo/"
+  sudo mkdir "$work_dir/squashfs-root/etc/logo/"
+  sudo cp $PARENT_DIR/nebula/etc/logo/* "$work_dir/squashfs-root/etc/logo/"
+  sudo rm -rf "$work_dir/squashfs-root/etc/boot-display/"
+  sudo mkdir "$work_dir/squashfs-root/etc/boot-display/"
+  sudo cp -rf $PARENT_DIR/nebula/etc/boot-display/* "$work_dir/squashfs-root/etc/boot-display/"
+
+  if [ -f "$work_dir/squashfs-root/etc/init.d/S70cx_ai_middleware" ]; then
+    sudo rm $work_dir/squashfs-root/etc/init.d/S70cx_ai_middleware
+  fi
+
+  if [ -f "$work_dir/squashfs-root/etc/init.d/S97webrtc" ]; then
+    sudo rm $work_dir/squashfs-root/etc/init.d/S97webrtc
+  fi
+
+  if [ -f "$work_dir/squashfs-root/etc/init.d/S99mdns" ]; then
+    sudo rm $work_dir/squashfs-root/etc/init.d/S99mdns
+  fi
+
+  if [ -f "$work_dir/squashfs-root/etc/init.d/S96wipe_data" ]; then
+    sudo rm $work_dir/squashfs-root/etc/init.d/S96wipe_data
+  fi
+
+  if [ -f "$work_dir/squashfs-root/etc/init.d/S55klipper_service" ]; then
+    sudo rm $work_dir/squashfs-root/etc/init.d/S55klipper_service
+  fi
+
+  if [ -f "$work_dir/squashfs-root/etc/init.d/S57klipper_mcu" ]; then
+    sudo rm $work_dir/squashfs-root/etc/init.d/S57klipper_mcu
+  fi
+}
+
 function customise_rootfs() {
+    local custom=$1
+
     write_ota_info
     [ -d $CURRENT_DIR/opt ] && rm -rf $CURRENT_DIR/opt
-    sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
+
+    # this is a super custom bootstrap environment
+    if [ "$custom" = "--custom_nebula" ]; then
+      custom_nebula_rootfs
+    else
+      sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
+    fi
 
     # everyone gets `Creality2023` :-)
     root_hash='root:$5$Z96nzwZv.IE3hn7t$WJw4O.VbtjHblc0cCbaT3r3fsiNNo0yCNHTztCe5zND:::::::'
@@ -153,9 +236,12 @@ function customise_rootfs() {
 }
 
 function update_rootfs() {
+    local custom=$1
+
     pushd "$work_dir" > /dev/null
     sudo unsquashfs orig_rootfs.squashfs
-    customise_rootfs
+    customise_rootfs $custom
+
     # Host SELinux labels become security.selinux xattrs during repacking. The
     # printer's OverlayFS cannot copy those xattrs to its ext4 upper layer.
     sudo mksquashfs squashfs-root rootfs.squashfs -no-xattrs || exit $?
@@ -180,7 +266,7 @@ orig_rootfs_md5=$(md5sum "$work_dir/orig_rootfs.squashfs" | awk '{print $1}')
 orig_rootfs_size=$(stat -c%s "$work_dir/orig_rootfs.squashfs")
 
 # do the changes here
-update_rootfs || exit $?
+update_rootfs "$custom" || exit $?
 validate_rebuilt_rootfs "$work_dir/rootfs.squashfs"
 
 if unsquashfs -cat "$work_dir/orig_rootfs.squashfs" etc/mount_mmc_ext4_overlay.sh > /dev/null 2>&1; then
@@ -192,13 +278,55 @@ fi
 rootfs_md5=$(md5sum "$work_dir/rootfs.squashfs" | awk '{print $1}')
 rootfs_size=$(stat -c%s "$work_dir/rootfs.squashfs")
 
+if [ "$custom" = "--custom_nebula" ]; then
+    custom_zero_bin="$PARENT_DIR/nebula/zero.bin"
+    require_file "$custom_zero_bin"
+
+    shopt -s nullglob
+    original_zero_parts=("$original_dir/$old_sub_directory"/zero.bin.*)
+    shopt -u nullglob
+    [ "${#original_zero_parts[@]}" -gt 0 ] || fail "Original OTA image contains no zero.bin parts"
+
+    cat "${original_zero_parts[@]}" > "$work_dir/orig_zero.bin" || \
+        fail "Unable to reassemble the original zero.bin"
+    orig_zero_md5=$(md5sum "$work_dir/orig_zero.bin" | awk '{print $1}')
+    orig_zero_size=$(stat -c%s "$work_dir/orig_zero.bin")
+    zero_md5=$(md5sum "$custom_zero_bin" | awk '{print $1}')
+    zero_size=$(stat -Lc%s "$custom_zero_bin")
+fi
+
 echo "current_version=$version" > "$work_dir/$directory/ota_config.in"
 echo "" > "$work_dir/$directory/$sub_directory/ota_v${version}.ok"
 
 cp "$original_dir/$old_sub_directory/ota_update.in" "$work_dir/$directory/$sub_directory/"
 cp "$original_dir/$old_sub_directory"/ota_md5_xImage* "$work_dir/$directory/$sub_directory/"
-cp "$original_dir/$old_sub_directory"/ota_md5_zero.bin* "$work_dir/$directory/$sub_directory/"
-cp "$original_dir/$old_sub_directory"/zero.bin.* "$work_dir/$directory/$sub_directory/"
+
+if [ "$custom" = "--custom_nebula" ]; then
+    pushd "$work_dir/$directory/$sub_directory" > /dev/null
+    split -d -b 1048576 -a 4 "$custom_zero_bin" zero.bin.
+    popd > /dev/null
+
+    part_md5=
+    shopt -s nullglob
+    zero_parts=("$work_dir/$directory/$sub_directory"/zero.bin.*)
+    shopt -u nullglob
+    [ "${#zero_parts[@]}" -gt 0 ] || fail "Unable to split custom zero.bin"
+    for i in "${zero_parts[@]}"; do
+        file=$(basename "$i")
+        if [ -z "$part_md5" ]; then
+            id=$zero_md5
+        else
+            id=$part_md5
+        fi
+        mv "$i" "$work_dir/$directory/$sub_directory/${file}.${id}"
+        part_md5=$(md5sum "$work_dir/$directory/$sub_directory/${file}.${id}" | awk '{print $1}')
+        echo "$part_md5" >> "$work_dir/$directory/$sub_directory/ota_md5_zero.bin.${zero_md5}"
+    done
+else
+    cp "$original_dir/$old_sub_directory"/ota_md5_zero.bin* "$work_dir/$directory/$sub_directory/"
+    cp "$original_dir/$old_sub_directory"/zero.bin.* "$work_dir/$directory/$sub_directory/"
+fi
+
 cp "$original_dir/$old_sub_directory"/xImage.* "$work_dir/$directory/$sub_directory/"
 
 pushd "$work_dir/$directory/$sub_directory" > /dev/null
@@ -225,6 +353,10 @@ done
 sed -i "s/ota_version=$CREALITY_VERSION/ota_version=$version/g" "$work_dir/$directory/$sub_directory/ota_update.in"
 sed -i "s/img_md5=$orig_rootfs_md5/img_md5=$rootfs_md5/g" "$work_dir/$directory/$sub_directory/ota_update.in"
 sed -i "s/img_size=$orig_rootfs_size/img_size=$rootfs_size/g" "$work_dir/$directory/$sub_directory/ota_update.in"
+if [ "$custom" = "--custom_nebula" ]; then
+    sed -i "s/img_md5=$orig_zero_md5/img_md5=$zero_md5/g" "$work_dir/$directory/$sub_directory/ota_update.in"
+    sed -i "s/img_size=$orig_zero_size/img_size=$zero_size/g" "$work_dir/$directory/$sub_directory/ota_update.in"
+fi
 
 pushd "$work_dir" > /dev/null
 7z a ${image_name}.7z -p"$FIRMWARE_PASSWORD" $directory
