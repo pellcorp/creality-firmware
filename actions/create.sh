@@ -183,6 +183,8 @@ function write_ota_info() {
 }
 
 function custom_nebula_rootfs() {
+  # flag that the root firmware is from pellcorp, for Nebula we check this
+  sudo cp $PARENT_DIR/nebula/etc/pellcorp "$work_dir/squashfs-root/etc//"
   sudo cp $PARENT_DIR/nebula/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
   sudo cp $PARENT_DIR/nebula/usr/bin/* "$work_dir/squashfs-root/usr/bin/"
   sudo rm -rf "$work_dir/squashfs-root/etc/logo/"
