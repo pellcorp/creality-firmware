@@ -88,7 +88,6 @@ case "$1" in
           FLAG_FILE=$(echo $FLAG_FILE | awk '{print $1}')
           echo "INFO: Executing factory reset..."
           mv "$FLAG_FILE" "${FLAG_FILE}.old" >/dev/null 2>&1
-          echo "Factory reset triggered by flag file $FLAG_FILE" > /usr/data/printer_data/logs/factoryreset.log
           /bin/sync >/dev/null 2>&1
 
           # we want to unmount the device cleanly
