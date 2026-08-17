@@ -18,14 +18,14 @@ for command in $commands; do
 done
 
 if [ $# -eq 0 ]; then
-  echo "Usage: $(basename $0) <downloaded image> [--custom_nebula]"
+  echo "Usage: $(basename $0) <downloaded image> [--simpleaf]"
   exit 1
 fi
 
 custom="${2:-}"
-if [ -n "$custom" ] && [ "$custom" != "--custom_nebula" ]; then
+if [ -n "$custom" ] && [ "$custom" != "--simpleaf" ]; then
   echo "FATAL: Unknown option: $custom" >&2
-  echo "Usage: $(basename $0) <downloaded image> [--custom_nebula]" >&2
+  echo "Usage: $(basename $0) <downloaded image> [--simpleaf]" >&2
   exit 1
 fi
 
@@ -49,6 +49,13 @@ fi
 
 # thanks to Neon for showing me how to derive the password
 FIRMWARE_PASSWORD=$(mkpasswd -m md5 "${BOARD_SHORT_NAME}C3_7e_bz" -S cxswfile)
+
+# this is mostly for the --simpleaf bootstrap
+if [ "$BOARD_SHORT_NAME" = "NEBULA" ] || [ "$BOARD_SHORT_NAME" = "F005" ] || [ "$BOARD_SHORT_NAME" = "F004" ]; then
+  BOARD_TYPE=nebula
+else
+  BOARD_TYPE=k1
+fi
 
 version="7.${CREALITY_VERSION}"
 old_directory="${BOARD_NAME}_ota_img_V${CREALITY_VERSION}"
@@ -140,7 +147,7 @@ function validate_ota_image() {
 
     validate_rootfs "$validation_rootfs" "Reassembled rootfs"
 
-    if [ "$custom" = "--custom_nebula" ]; then
+    if [ "$custom" = "--simpleaf" ]; then
         require_file "$validation_payload_dir/ota_md5_zero.bin.${zero_md5}"
 
         shopt -s nullglob
@@ -182,17 +189,18 @@ function write_ota_info() {
     sudo cp "$work_dir/ota_info" "$work_dir/squashfs-root/etc/"
 }
 
-function custom_nebula_rootfs() {
+function custom_simpleaf_rootfs() {
   # flag that the root firmware is from pellcorp, for Nebula we check this
-  sudo cp $PARENT_DIR/nebula/etc/pellcorp "$work_dir/squashfs-root/etc//"
-  sudo cp $PARENT_DIR/nebula/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
-  sudo cp $PARENT_DIR/nebula/usr/bin/* "$work_dir/squashfs-root/usr/bin/"
+  sudo cp $PARENT_DIR/simpleaf/etc/pellcorp "$work_dir/squashfs-root/etc/"
+  sudo cp $PARENT_DIR/simpleaf/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
+  sudo cp $PARENT_DIR/simpleaf/usr/bin/curl "$work_dir/squashfs-root/usr/bin/"
+  sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
   sudo rm -rf "$work_dir/squashfs-root/etc/logo/"
   sudo mkdir "$work_dir/squashfs-root/etc/logo/"
-  sudo cp $PARENT_DIR/nebula/etc/logo/* "$work_dir/squashfs-root/etc/logo/"
+  sudo cp $PARENT_DIR/simpleaf/etc/logo/* "$work_dir/squashfs-root/etc/logo/"
   sudo rm -rf "$work_dir/squashfs-root/etc/boot-display/"
   sudo mkdir "$work_dir/squashfs-root/etc/boot-display/"
-  sudo cp -rf $PARENT_DIR/nebula/etc/boot-display/* "$work_dir/squashfs-root/etc/boot-display/"
+  sudo cp -rf $PARENT_DIR/simpleaf/etc/boot-display/${BOARD_TYPE}/* "$work_dir/squashfs-root/etc/boot-display/"
 
   if [ -f "$work_dir/squashfs-root/etc/init.d/S70cx_ai_middleware" ]; then
     sudo rm $work_dir/squashfs-root/etc/init.d/S70cx_ai_middleware
@@ -226,8 +234,8 @@ function customise_rootfs() {
     [ -d $CURRENT_DIR/opt ] && rm -rf $CURRENT_DIR/opt
 
     # this is a super custom bootstrap environment
-    if [ "$custom" = "--custom_nebula" ]; then
-      custom_nebula_rootfs
+    if [ "$custom" = "--simpleaf" ]; then
+      custom_simpleaf_rootfs
     else
       sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
     fi
@@ -280,8 +288,8 @@ fi
 rootfs_md5=$(md5sum "$work_dir/rootfs.squashfs" | awk '{print $1}')
 rootfs_size=$(stat -c%s "$work_dir/rootfs.squashfs")
 
-if [ "$custom" = "--custom_nebula" ]; then
-    custom_zero_bin="$PARENT_DIR/nebula/zero.bin"
+if [ "$custom" = "--simpleaf" ]; then
+    custom_zero_bin="$PARENT_DIR/simpleaf/zero/${BOARD_TYPE}.bin"
     require_file "$custom_zero_bin"
 
     shopt -s nullglob
@@ -303,7 +311,7 @@ echo "" > "$work_dir/$directory/$sub_directory/ota_v${version}.ok"
 cp "$original_dir/$old_sub_directory/ota_update.in" "$work_dir/$directory/$sub_directory/"
 cp "$original_dir/$old_sub_directory"/ota_md5_xImage* "$work_dir/$directory/$sub_directory/"
 
-if [ "$custom" = "--custom_nebula" ]; then
+if [ "$custom" = "--simpleaf" ]; then
     pushd "$work_dir/$directory/$sub_directory" > /dev/null
     split -d -b 1048576 -a 4 "$custom_zero_bin" zero.bin.
     popd > /dev/null
@@ -355,7 +363,7 @@ done
 sed -i "s/ota_version=$CREALITY_VERSION/ota_version=$version/g" "$work_dir/$directory/$sub_directory/ota_update.in"
 sed -i "s/img_md5=$orig_rootfs_md5/img_md5=$rootfs_md5/g" "$work_dir/$directory/$sub_directory/ota_update.in"
 sed -i "s/img_size=$orig_rootfs_size/img_size=$rootfs_size/g" "$work_dir/$directory/$sub_directory/ota_update.in"
-if [ "$custom" = "--custom_nebula" ]; then
+if [ "$custom" = "--simpleaf" ]; then
     sed -i "s/img_md5=$orig_zero_md5/img_md5=$zero_md5/g" "$work_dir/$directory/$sub_directory/ota_update.in"
     sed -i "s/img_size=$orig_zero_size/img_size=$zero_size/g" "$work_dir/$directory/$sub_directory/ota_update.in"
 fi
