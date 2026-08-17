@@ -219,11 +219,11 @@ function custom_simpleaf_rootfs() {
   fi
 
   if [ -f "$work_dir/squashfs-root/etc/init.d/S55klipper_service" ]; then
-    sudo rm $work_dir/squashfs-root/etc/init.d/S55klipper_service
+    sudo sed -i 's/^\(\s*\)start$/\1#start/g' "$work_dir/squashfs-root/etc/init.d/S55klipper_service"
   fi
 
   if [ -f "$work_dir/squashfs-root/etc/init.d/S57klipper_mcu" ]; then
-    sudo rm $work_dir/squashfs-root/etc/init.d/S57klipper_mcu
+    sudo sed -i 's/^\(\s*\)mcu_host_start$/\1#mcu_host_start/g' "$work_dir/squashfs-root/etc/init.d/S57klipper_mcu"
   fi
 }
 
