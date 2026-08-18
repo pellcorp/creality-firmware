@@ -22,7 +22,7 @@ To pre-root a downloaded firmware file, its very easy:
 
 **Note:** This requires you have docker setup, we build via docker to ensure we have a consistent set of tools
 
-The resulting img file will be located at `/tmpCR4CU220812S11_ota_img_V6.1.3.3.8.img`
+The resulting img file will be located at `/tmpCR4CU220812S11_ota_img_V7.1.3.3.8.img`
 
 ### SimpleAF Base Firmware
 
@@ -35,7 +35,7 @@ It's very important to test this in the safest way possible, luckily creality ha
 a new firmware image from the cli rather than relying on the display server
 
 ```
-/etc/ota_bin/local_ota_update.sh /tmp/udisk/sda1/CR4CU220812S11_ota_img_V6.1.3.3.8.img
+/etc/ota_bin/local_ota_update.sh /tmp/udisk/sda1/CR4CU220812S11_ota_img_V7.1.3.3.8.img
 ```
 
 ### What is the Root Password?
