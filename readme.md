@@ -28,7 +28,6 @@ The resulting img file will be located at `/tmpCR4CU220812S11_ota_img_V6.1.3.3.8
 
 The `--simpleaf` argument is passed to generate base firmware for installing SimpleAF, currently this is used for
 Nebula Pad only, but may be extended in future to other firmware types.
-Nebula Pad only, but may be extended in future to other firmware types.
 
 ### Testing
 
