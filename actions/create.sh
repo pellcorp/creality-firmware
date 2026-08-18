@@ -62,7 +62,7 @@ old_sub_directory="ota_v${CREALITY_VERSION}"
 
 if [ "$custom" = "--simpleaf" ]; then
   version="8.${CREALITY_VERSION}"
-  BOARD_NAME="SimpleAF_${BOARD_NAME}"
+#  BOARD_NAME="SimpleAF_${BOARD_NAME}"
 else
   version="7.${CREALITY_VERSION}"
 fi
