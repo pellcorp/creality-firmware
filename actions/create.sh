@@ -202,20 +202,27 @@ function custom_simpleaf_rootfs() {
   sudo mkdir "$work_dir/squashfs-root/etc/boot-display/"
   sudo cp -rf $PARENT_DIR/simpleaf/etc/boot-display/${BOARD_TYPE}/* "$work_dir/squashfs-root/etc/boot-display/"
 
+  # fix up a missing python shortcut
+  if [ ! -L "$work_dir/squashfs-root/usr/bin/python" ]; then
+    cd "$work_dir/squashfs-root/usr/bin"
+    sudo ln -sf python3 python
+    cd - > /dev/null
+  fi
+
   if [ -f "$work_dir/squashfs-root/etc/init.d/S70cx_ai_middleware" ]; then
-    sudo rm $work_dir/squashfs-root/etc/init.d/S70cx_ai_middleware
+    sudo rm "$work_dir/squashfs-root/etc/init.d/S70cx_ai_middleware"
   fi
 
   if [ -f "$work_dir/squashfs-root/etc/init.d/S97webrtc" ]; then
-    sudo rm $work_dir/squashfs-root/etc/init.d/S97webrtc
+    sudo rm "$work_dir/squashfs-root/etc/init.d/S97webrtc"
   fi
 
   if [ -f "$work_dir/squashfs-root/etc/init.d/S99mdns" ]; then
-    sudo rm $work_dir/squashfs-root/etc/init.d/S99mdns
+    sudo rm "$work_dir/squashfs-root/etc/init.d/S99mdns"
   fi
 
   if [ -f "$work_dir/squashfs-root/etc/init.d/S96wipe_data" ]; then
-    sudo rm $work_dir/squashfs-root/etc/init.d/S96wipe_data
+    sudo rm "$work_dir/squashfs-root/etc/init.d/S96wipe_data"
   fi
 
   if [ -f "$work_dir/squashfs-root/etc/init.d/S55klipper_service" ]; then
