@@ -17,8 +17,14 @@ And pre-roots them, adds an emergency factory reset and a way to configure wifi 
 To pre-root a downloaded firmware file, its very easy:
 
 ```
-./create ~/Downloads/CR4CU220812S11_ota_img_V1.3.3.8.img
+./create ~/Development/creality/originals/CR4CU220812S11_ota_img_V1.3.3.8.img
 ```
+
+### SimpleAF Base Firmware
+
+The `--simpleaf` argument is passed to generate base firmware for installing SimpleAF, currently this is used for
+Nebula Pad only, but may be extended in future to other firmware types.
+Nebula Pad only, but may be extended in future to other firmware types.
 
 **Note:** This requires you have docker setup, we build via docker to ensure we have a consistent set of tools
 
