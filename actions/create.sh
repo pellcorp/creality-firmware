@@ -57,12 +57,20 @@ else
   BOARD_TYPE=k1
 fi
 
-version="7.${CREALITY_VERSION}"
 old_directory="${BOARD_NAME}_ota_img_V${CREALITY_VERSION}"
 old_sub_directory="ota_v${CREALITY_VERSION}"
+
+if [ "$custom" = "--simpleaf" ]; then
+  version="${CREALITY_VERSION}"
+  BOARD_NAME="SimpleAF_${BOARD_NAME}"
+else
+  version="7.${CREALITY_VERSION}"
+fi
+
 directory="${BOARD_NAME}_ota_img_V${version}"
 sub_directory="ota_v${version}"
 image_name="${BOARD_NAME}_ota_img_V${version}".img
+
 # for the decrypted rootfs
 rootfs_filename="${BOARD_NAME}_ota_img_V${version}.rootfs.squashfs"
 build_dir=$(mktemp -d "/tmp/create-${BOARD_SHORT_NAME}-${CREALITY_VERSION}.XXXXXX") || {
