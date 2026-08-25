@@ -52,7 +52,7 @@ fi
 FIRMWARE_PASSWORD=$(mkpasswd -m md5 "${BOARD_SHORT_NAME}C3_7e_bz" -S cxswfile)
 
 # this is mostly for the --simpleaf bootstrap
-if [ "$BOARD_SHORT_NAME" = "NEBULA" ] || [ "$BOARD_SHORT_NAME" = "F005" ] || [ "$BOARD_SHORT_NAME" = "F004" ]; then
+if [ "$BOARD_SHORT_NAME" = "NEBULA" ] || [ "$BOARD_SHORT_NAME" = "F005" ] || [ "$BOARD_SHORT_NAME" = "F004" ] || [ "$BOARD_SHORT_NAME" = "F003" ]; then
   BOARD_TYPE=nebula
 else
   BOARD_TYPE=k1
