@@ -23,9 +23,9 @@ if [ $# -eq 0 ]; then
 fi
 
 custom="${2:-}"
-if [ -n "$custom" ] && [ "$custom" != "--simpleaf" ]; then
+if [ -n "$custom" ] && [ "$custom" != "--simpleaf" ] && [ "$custom" != "--dropbear" ]; then
   echo "FATAL: Unknown option: $custom" >&2
-  echo "Usage: $(basename $0) <downloaded image> [--simpleaf]" >&2
+  echo "Usage: $(basename $0) <downloaded image> [--simpleaf|--dropbear]" >&2
   exit 1
 fi
 
@@ -63,7 +63,8 @@ old_sub_directory="ota_v${CREALITY_VERSION}"
 
 if [ "$custom" = "--simpleaf" ]; then
   version="8.${CREALITY_VERSION}"
-#  BOARD_NAME="SimpleAF_${BOARD_NAME}"
+elif [ "$custom" = "--dropbear" ]; then # special case disable startup and enable dropbear
+  version="6.${CREALITY_VERSION}"
 else
   version="7.${CREALITY_VERSION}"
 fi
@@ -254,6 +255,11 @@ function customise_rootfs() {
       custom_simpleaf_rootfs
     else
       sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
+
+      if [ "$custom" = "--dropbear" ]; then # special case disable startup and enable dropbear
+        sudo rm "$work_dir/squashfs-root/etc/init.d/S99start_app"
+        sudo cp $PARENT_DIR/simpleaf/etc/init.d/S50dropbear  "$work_dir/squashfs-root/etc/init.d/"
+      fi
     fi
 
     # everyone gets `Creality2023` :-)
