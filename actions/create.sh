@@ -31,11 +31,12 @@ fi
 
 old_image_name=/originals/$(basename $1)
 
-# Board names may themselves contain underscores (for example, Ender-3_V3_KE_F005).
+# Board names may themselves contain underscores (for example, Ender-3_V3_KE_F005, CR-10_SE_F003).
 filename=$(basename $old_image_name)
 if [[ $filename =~ ^(.+)_ota_img_V([^.]+(\.[^.]+)*)\.img$ ]]; then
   BOARD_NAME=${BASH_REMATCH[1]}
   BOARD_SHORT_NAME=${BOARD_NAME#Ender-3_V3_KE_}
+  BOARD_SHORT_NAME=${BOARD_NAME#CR-10_SE_}
   CREALITY_VERSION=${BASH_REMATCH[2]}
 else
   echo "Invalid image filename: $old_image_name" >&2
