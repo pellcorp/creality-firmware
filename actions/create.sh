@@ -36,7 +36,7 @@ filename=$(basename $old_image_name)
 if [[ $filename =~ ^(.+)_ota_img_V([^.]+(\.[^.]+)*)\.img$ ]]; then
   BOARD_NAME=${BASH_REMATCH[1]}
   BOARD_SHORT_NAME=${BOARD_NAME#Ender-3_V3_KE_}
-  BOARD_SHORT_NAME=${BOARD_NAME#CR-10_SE_}
+  BOARD_SHORT_NAME=${BOARD_SHORT_NAME#CR-10_SE_}
   CREALITY_VERSION=${BASH_REMATCH[2]}
 else
   echo "Invalid image filename: $old_image_name" >&2
@@ -204,6 +204,7 @@ function custom_simpleaf_rootfs() {
   sudo cp $PARENT_DIR/simpleaf/etc/pellcorp "$work_dir/squashfs-root/etc/"
   sudo cp $PARENT_DIR/simpleaf/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
   sudo cp $PARENT_DIR/simpleaf/usr/bin/curl "$work_dir/squashfs-root/usr/bin/"
+  sudo cp $PARENT_DIR/simpleaf/root/change-sn.sh "$work_dir/squashfs-root/root/"
   sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
   sudo rm -rf "$work_dir/squashfs-root/etc/logo/"
   sudo mkdir "$work_dir/squashfs-root/etc/logo/"
@@ -260,6 +261,7 @@ function customise_rootfs() {
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S99start_app "$work_dir/squashfs-root/etc/init.d/"
         sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S50dropbear "$work_dir/squashfs-root/etc/init.d/"
+        sudo cp $PARENT_DIR/simpleaf/root/change-sn.sh "$work_dir/squashfs-root/root/"
       fi
     fi
 
