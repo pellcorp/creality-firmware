@@ -257,8 +257,9 @@ function customise_rootfs() {
       sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
 
       if [ "$custom" = "--dropbear" ]; then # special case disable startup and enable dropbear
-        sudo rm "$work_dir/squashfs-root/etc/init.d/S99start_app"
-        sudo cp $PARENT_DIR/simpleaf/etc/init.d/S50dropbear  "$work_dir/squashfs-root/etc/init.d/"
+        sudo cp $PARENT_DIR/simpleaf/etc/init.d/S99start_app "$work_dir/squashfs-root/etc/init.d/"
+        sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
+        sudo cp $PARENT_DIR/simpleaf/etc/init.d/S50dropbear "$work_dir/squashfs-root/etc/init.d/"
       fi
     fi
 
