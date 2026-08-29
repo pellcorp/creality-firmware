@@ -23,9 +23,9 @@ if [ $# -eq 0 ]; then
 fi
 
 custom="${2:-}"
-if [ -n "$custom" ] && [ "$custom" != "--simpleaf" ] && [ "$custom" != "--dropbear" ]; then
+if [ -n "$custom" ] && [ "$custom" != "--simpleaf" ] && [ "$custom" != "--dropbear" ] && [ "$custom" != "--configs" ]; then
   echo "FATAL: Unknown option: $custom" >&2
-  echo "Usage: $(basename $0) <downloaded image> [--simpleaf|--dropbear]" >&2
+  echo "Usage: $(basename $0) <downloaded image> [--simpleaf|--dropbear|--configs]" >&2
   exit 1
 fi
 
@@ -63,7 +63,7 @@ old_sub_directory="ota_v${CREALITY_VERSION}"
 
 if [ "$custom" = "--simpleaf" ]; then
   version="8.${CREALITY_VERSION}"
-elif [ "$custom" = "--dropbear" ]; then # special case disable startup and enable dropbear
+elif [ "$custom" = "--dropbear" ] || [ "$custom" = "--configs" ]; then
   version="6.${CREALITY_VERSION}"
 else
   version="7.${CREALITY_VERSION}"
@@ -257,11 +257,18 @@ function customise_rootfs() {
     else
       sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
 
-      if [ "$custom" = "--dropbear" ]; then # special case disable startup and enable dropbear
+      if [ "$custom" = "--dropbear" ] || [ "$custom" = "--configs" ]; then # special case disable startup and enable dropbear
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S99start_app "$work_dir/squashfs-root/etc/init.d/"
         sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S50dropbear "$work_dir/squashfs-root/etc/init.d/"
         sudo cp $PARENT_DIR/simpleaf/root/change-sn.sh "$work_dir/squashfs-root/root/"
+      fi
+
+      if [ "$custom" = "--configs" ]; then
+        sudo cp $PARENT_DIR/configs/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
+        sudo rm -rf "$work_dir/squashfs-root/usr/share/klipper/config/*"
+        sudo rm -rf "$work_dir/squashfs-root/usr/share/klipper/config/*.cfg"
+        sudo cp -r $PARENT_DIR/configs/usr/share/klipper/config/* "$work_dir/squashfs-root/usr/share/klipper/config/"
       fi
     fi
 
