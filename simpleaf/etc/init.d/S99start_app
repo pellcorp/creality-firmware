@@ -4,6 +4,14 @@ PROG=/usr/bin/bootstrap-server
 PID_FILE=/var/run/bootstrap-server.pid
 
 start_server(){
+    DISPLAY_ROTATE=0
+    board=$(/usr/bin/get_sn_mac.sh board)
+    if [ "$board" != "NEBULA V1.0.0.1" ]; then
+      DISPLAY_ROTATE=3
+      # seems like the k1 board might need a bit longer
+      sleep 30
+    fi
+
     # kill the boot display so it does not keep showing over top of grumpyscreen
     killall boot_display 2> /dev/null
     # display black transition image to stop the corrupt image being shown
@@ -11,11 +19,6 @@ start_server(){
 
     sync && echo 3 > /proc/sys/vm/drop_caches
 
-    DISPLAY_ROTATE=0
-    board=$(/usr/bin/get_sn_mac.sh board)
-    if [ "$board" != "NEBULA V1.0.0.1" ]; then
-      DISPLAY_ROTATE=3
-    fi
     DISPLAY_ROTATE=$DISPLAY_ROTATE start-stop-daemon -S -q -b -m -p $PID_FILE --exec $PROG
 }
 

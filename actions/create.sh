@@ -203,6 +203,8 @@ function custom_simpleaf_rootfs() {
   # flag that the root firmware is from pellcorp, for Nebula we check this
   sudo cp $PARENT_DIR/simpleaf/etc/pellcorp "$work_dir/squashfs-root/etc/"
   sudo cp $PARENT_DIR/simpleaf/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
+  sudo mkdir -p "$work_dir/squashfs-root/usr/libexec/"
+  sudo cp $PARENT_DIR/simpleaf/usr/libexec/* "$work_dir/squashfs-root/usr/libexec/"
   sudo cp $PARENT_DIR/simpleaf/usr/bin/curl "$work_dir/squashfs-root/usr/bin/"
   sudo cp $PARENT_DIR/simpleaf/root/change-sn.sh "$work_dir/squashfs-root/root/"
   sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
@@ -258,7 +260,12 @@ function customise_rootfs() {
       sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
 
       if [ "$custom" = "--bootstrap" ] || [ "$custom" = "--configs" ]; then # special case disable startup and enable dropbear
+        sudo mkdir -p "$work_dir/squashfs-root/usr/libexec/"
+        sudo cp $PARENT_DIR/simpleaf/usr/libexec/* "$work_dir/squashfs-root/usr/libexec/"
+
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S99start_app "$work_dir/squashfs-root/etc/init.d/"
+        sudo rm -rf "$work_dir/squashfs-root/etc/logo/"
+        sudo mkdir "$work_dir/squashfs-root/etc/logo/"
         sudo cp $PARENT_DIR/simpleaf/etc/logo/* "$work_dir/squashfs-root/etc/logo/"
         sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S50dropbear "$work_dir/squashfs-root/etc/init.d/"
