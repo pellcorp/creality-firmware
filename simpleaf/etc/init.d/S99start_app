@@ -8,9 +8,11 @@ start_server(){
     board=$(/usr/bin/get_sn_mac.sh board)
     if [ "$board" != "NEBULA V1.0.0.1" ]; then
       DISPLAY_ROTATE=3
-      # seems like the k1 board might need a bit longer
-      sleep 30
     fi
+
+    # give wifi a chance to come up
+    # FIXME - figure out a way to wait for WPA Supplicant
+    sleep 30
 
     # kill the boot display so it does not keep showing over top of grumpyscreen
     killall boot_display 2> /dev/null

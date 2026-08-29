@@ -76,6 +76,11 @@ copy_config()
     local model=$(get_sn_mac.sh model)
     local board=$(get_sn_mac.sh board)
     local pcba_test=$(get_sn_mac.sh pcba_test)
+    local structure_version=$(get_sn_mac.sh structure_version)
+
+    echo "Model is $model"
+    echo "Board is $board"
+    echo "Structure Version is $structure_version"
     case $model in
         "F001")
             config_dir=F001

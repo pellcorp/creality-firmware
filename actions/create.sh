@@ -274,8 +274,9 @@ function customise_rootfs() {
 
       if [ "$custom" = "--configs" ]; then
         sudo cp $PARENT_DIR/configs/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
-        sudo rm -rf "$work_dir/squashfs-root/usr/share/klipper/config/*"
-        sudo rm -rf "$work_dir/squashfs-root/usr/share/klipper/config/*.cfg"
+        sudo cp $PARENT_DIR/configs/root/change-config.sh "$work_dir/squashfs-root/root/"
+        sudo rm -rf "$work_dir/squashfs-root/usr/share/klipper/config/"
+        sudo mkdir "$work_dir/squashfs-root/usr/share/klipper/config/"
         sudo cp -r $PARENT_DIR/configs/usr/share/klipper/config/* "$work_dir/squashfs-root/usr/share/klipper/config/"
       fi
     fi
