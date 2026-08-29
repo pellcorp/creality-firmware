@@ -7,10 +7,16 @@ start_server(){
     # kill the boot display so it does not keep showing over top of grumpyscreen
     killall boot_display 2> /dev/null
     # display black transition image to stop the corrupt image being shown
-    cmd_jpeg_display /usr/data/pellcorp/k1/black.jpg &
+    cmd_jpeg_display /etc/logo/black.jpg &
 
     sync && echo 3 > /proc/sys/vm/drop_caches
-    start-stop-daemon -S -q -b -m -p $PID_FILE --exec $PROG
+
+    DISPLAY_ROTATE=0
+    board=$(/usr/bin/get_sn_mac.sh board)
+    if [ "$board" != "NEBULA V1.0.0.1" ]; then
+      DISPLAY_ROTATE=3
+    fi
+    DISPLAY_ROTATE=$DISPLAY_ROTATE start-stop-daemon -S -q -b -m -p $PID_FILE --exec $PROG
 }
 
 stop_server() {

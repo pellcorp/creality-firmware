@@ -23,9 +23,9 @@ if [ $# -eq 0 ]; then
 fi
 
 custom="${2:-}"
-if [ -n "$custom" ] && [ "$custom" != "--simpleaf" ] && [ "$custom" != "--dropbear" ] && [ "$custom" != "--configs" ]; then
+if [ -n "$custom" ] && [ "$custom" != "--simpleaf" ] && [ "$custom" != "--bootstrap" ] && [ "$custom" != "--configs" ]; then
   echo "FATAL: Unknown option: $custom" >&2
-  echo "Usage: $(basename $0) <downloaded image> [--simpleaf|--dropbear|--configs]" >&2
+  echo "Usage: $(basename $0) <downloaded image> [--simpleaf|--bootstrap|--configs]" >&2
   exit 1
 fi
 
@@ -63,7 +63,7 @@ old_sub_directory="ota_v${CREALITY_VERSION}"
 
 if [ "$custom" = "--simpleaf" ]; then
   version="8.${CREALITY_VERSION}"
-elif [ "$custom" = "--dropbear" ] || [ "$custom" = "--configs" ]; then
+elif [ "$custom" = "--bootstrap" ] || [ "$custom" = "--configs" ]; then
   version="6.${CREALITY_VERSION}"
 else
   version="7.${CREALITY_VERSION}"
@@ -257,8 +257,9 @@ function customise_rootfs() {
     else
       sudo cp $PARENT_DIR/etc/init.d/* "$work_dir/squashfs-root/etc/init.d/"
 
-      if [ "$custom" = "--dropbear" ] || [ "$custom" = "--configs" ]; then # special case disable startup and enable dropbear
+      if [ "$custom" = "--bootstrap" ] || [ "$custom" = "--configs" ]; then # special case disable startup and enable dropbear
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S99start_app "$work_dir/squashfs-root/etc/init.d/"
+        sudo cp $PARENT_DIR/simpleaf/etc/logo/* "$work_dir/squashfs-root/etc/logo/"
         sudo cp $PARENT_DIR/simpleaf/usr/bin/${BOARD_TYPE}-bootstrap-server "$work_dir/squashfs-root/usr/bin/bootstrap-server"
         sudo cp $PARENT_DIR/simpleaf/etc/init.d/S50dropbear "$work_dir/squashfs-root/etc/init.d/"
         sudo cp $PARENT_DIR/simpleaf/root/change-sn.sh "$work_dir/squashfs-root/root/"
